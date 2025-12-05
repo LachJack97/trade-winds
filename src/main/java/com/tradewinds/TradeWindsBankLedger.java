@@ -1,5 +1,14 @@
 package com.tradewinds;
 
+import net.runelite.client.game.ItemManager;
+import net.runelite.api.coords.WorldPoint;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.util.HashMap;
+import java.util.Map;
+
+// REQUIRED: All injected services must have the @Singleton annotation.
+@Singleton
 public class TradeWindsBankLedger
 {
     private final TradeWindsStorage storage;
@@ -10,8 +19,9 @@ public class TradeWindsBankLedger
     private BankData bankData = new BankData();
     private boolean balancesLoaded = false;
 
+    // Corrected constructor argument types
     @Inject
-    public TradeWindsBankLedger(TradewindsStorage storage, ItemManager itemManager)
+    public TradeWindsBankLedger(TradeWindsStorage storage, ItemManager itemManager)
     {
         this.storage = storage;
         this.itemManager = itemManager;
@@ -55,22 +65,33 @@ public class TradeWindsBankLedger
     // reconcile + accessors
     public void reconcileWithGlobalTotals(Map<Integer, Integer> newGlobalTotals)
     {
-        // move your reconcile logic in here, unchanged
+        // Placeholder method body
     }
 
-    public int getLocalQuantity(int itemId) { /*…*/ }
-    public int getGlobalQuantity(int itemId) { /*…*/ }
+    public int getLocalQuantity(int itemId)
+    {
+        // Must return an int
+        return 0;
+    }
+
+    public int getGlobalQuantity(int itemId)
+    {
+        // Must return an int
+        return 0;
+    }
 
     public Map<Integer, Map<BankLocation, Integer>> getBalancesSnapshot()
     {
-        // copy logic from plugin
+        // Must return a Map
+        return null;
     }
 
     public String getItemNameSafe(int itemId)
     {
-        // use itemManager here instead of plugin
+        // Must return a String
+        return null;
     }
 
-    private void saveBalances() { /*…*/ }
-    private void loadBalances() { /*…*/ }
+    private void saveBalances() { /* ... implementation needed ... */ }
+    private void loadBalances() { /* ... implementation needed ... */ }
 }
