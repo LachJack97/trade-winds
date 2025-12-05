@@ -165,8 +165,7 @@ public class TradeWindsPanel extends PluginPanel
     public void refreshState()
     {
         boolean authed = authService.isAuthenticated();
-        String characterId = config.characterId();
-
+        String characterId = authService.getCharacterId();
         if (authed)
         {
             // Show main card

@@ -7,6 +7,9 @@ import net.runelite.client.config.ConfigItem;
 @ConfigGroup("tradewinds")
 public interface TradeWindsConfig extends Config
 {
+    // Public constant for the config group name, used by ConfigManager in TradeWindsAuthService
+    String GROUP = "tradewinds";
+
     @ConfigItem(
             keyName = "enableLocalBanks",
             name = "Enable Localised Banks",
@@ -94,12 +97,7 @@ public interface TradeWindsConfig extends Config
         return "";
     }
 
-    @ConfigItem(
-            keyName = "characterId",
-            name = "",
-            description = ""
-    )
-    void characterId(String id);
+    // REMOVED: void characterId(String id); (The setter is removed, forcing per-account storage)
 
     @ConfigItem(
             keyName = "firstRunComplete",
@@ -112,12 +110,7 @@ public interface TradeWindsConfig extends Config
         return false;
     }
 
-    @ConfigItem(
-            keyName = "firstRunComplete",
-            name = "",
-            description = ""
-    )
-    void firstRunComplete(boolean value);
+    // REMOVED: void firstRunComplete(boolean value); (The setter is removed, authentication state is now per-account)
 
     @ConfigItem(
             keyName = "clientUuid",
@@ -135,7 +128,7 @@ public interface TradeWindsConfig extends Config
             name = "",
             description = ""
     )
-    void clientUuid(String uuid);
+    void clientUuid(String uuid); // This remains as it is a client-wide ID
 
     @ConfigItem(
             keyName = "accountStatus",
@@ -148,12 +141,7 @@ public interface TradeWindsConfig extends Config
         return "";
     }
 
-    @ConfigItem(
-            keyName = "accountStatus",
-            name = "",
-            description = ""
-    )
-    void accountStatus(String status);
+    // REMOVED: void accountStatus(String status); (The setter is removed)
 
 
     @ConfigItem(
@@ -167,12 +155,7 @@ public interface TradeWindsConfig extends Config
         return "";
     }
 
-    @ConfigItem(
-            keyName = "brickReason",
-            name = "",
-            description = ""
-    )
-    void brickReason(String reason);
+    // REMOVED: void brickReason(String reason); (The setter is removed)
 
     @ConfigItem(
             keyName = "brickTimestamp",
@@ -185,12 +168,6 @@ public interface TradeWindsConfig extends Config
         return "";
     }
 
-    @ConfigItem(
-            keyName = "brickTimestamp",
-            name = "",
-            description = ""
-    )
-    void brickTimestamp(String ts);
+    // REMOVED: void brickTimestamp(String ts); (The setter is removed)
 
 }
-

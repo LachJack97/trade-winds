@@ -16,6 +16,7 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Text;
+import net.runelite.client.config.ConfigManager; // ConfigManager is required for account-keyed configuration
 
 import okhttp3.*;
 
@@ -33,7 +34,7 @@ public class TradeWindsAuthService
     private static final String PRESENCE_GET  = "/functions/v1/tradewinds-get-presence";
 
     // Replace this ↓
-    private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsZ21jcHBtdXF3cWJlenluc2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MjIxNDQsImV4cCI6MjA4MDM5ODE0NH0._5BahsJXpLKOa0j9mUMZmAwogJkE_4fCeDJAvl2E9-M";
+    private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsZ21jcHBtdXF3cWJlenluc2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MjIxNDQsImV4cHAiOjIwODAzOTgxNDR9._5BahsJXpLKOa0j9mUMZmAwogJkE_4fCeDJAvl2E9-M";
 
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private final OkHttpClient http = new OkHttpClient();
@@ -59,20 +60,49 @@ public class TradeWindsAuthService
     @Inject private Client client;
     @Inject private ClientThread clientThread;
     @Inject private TradeWindsConfig config;
+    @Inject private ConfigManager configManager;
+
+    // ---------------------------------------------------
+    // ACCOUNT-KEYED CONFIGURATION HELPERS
+    // ---------------------------------------------------
+
+    private String getAccountConfig(String key)
+    {
+        if (client.getAccountHash() == -1) return null;
+
+        // Key is prefixed with the account hash for per-account storage
+        String accountKey = String.valueOf(client.getAccountHash()) + "." + key;
+        return configManager.getConfiguration(TradeWindsConfig.GROUP, accountKey);
+    }
+
+    private void setAccountConfig(String key, String value)
+    {
+        if (client.getAccountHash() == -1) return;
+
+        String accountKey = String.valueOf(client.getAccountHash()) + "." + key;
+        configManager.setConfiguration(TradeWindsConfig.GROUP, accountKey, value);
+    }
 
     // ---------------------------------------------------
     // AUTH STATE
     // ---------------------------------------------------
+
     public boolean isAuthenticated()
     {
-        return config.firstRunComplete()
-                && config.characterId() != null
-                && !config.characterId().isEmpty();
+        // An account is authenticated if it has a stored character ID
+        String characterId = getCharacterId();
+        return characterId != null && !characterId.isEmpty();
+    }
+
+    public String getCharacterId()
+    {
+        return getAccountConfig("characterId");
     }
 
     public TradeWindsAccountStatus getAccountStatus()
     {
-        return TradeWindsAccountStatus.fromString(config.accountStatus());
+        // Get status dynamically from the account-keyed config
+        return TradeWindsAccountStatus.fromString(getAccountConfig("accountStatus"));
     }
 
     // ---------------------------------------------------
@@ -92,20 +122,26 @@ public class TradeWindsAuthService
             return;
         }
 
-        // --- NEW: Tutorial Island lock ---
-        if (!isOnTutorialIsland())
+        // --- NEW: DEBUG MODE BYPASS ---
+        if (!config.debugMode())
         {
+            // --- NEW: Tutorial Island lock ---
+            if (!isOnTutorialIsland())
+            {
 
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-                    "TradeWinds: Registration can only be completed on Tutorial Island.", null);
-            return;
-        }
+                client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+                        "TradeWinds: Registration can only be completed on Tutorial Island.", null);
+                return;
+            }
 
-        if (!passesNewAccountChecks())
-        {
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-                    "TradeWinds: This account is too progressed to register (must be fresh from Tutorial Island).", null);
-            return;
+            if (!passesNewAccountChecks())
+            {
+                client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+                        "TradeWinds: This account is too progressed to register (must be fresh from Tutorial Island).", null);
+                return;
+            }
+        } else {
+            log.warn("TradeWinds: Debug mode active. Bypassing registration restrictions.");
         }
 
 
@@ -146,9 +182,9 @@ public class TradeWindsAuthService
                     return;
                 }
 
-                config.characterId(out.characterId);
-                config.firstRunComplete(true);
-                config.accountStatus(out.status != null ? out.status : "CLEAN");
+                // Store character ID and status per-account
+                setAccountConfig("characterId", out.characterId);
+                setAccountConfig("accountStatus", out.status != null ? out.status : "CLEAN");
             }
         }
         catch (Exception e)
@@ -160,9 +196,9 @@ public class TradeWindsAuthService
 
     private void fallbackRegister()
     {
-        config.characterId("local-" + config.clientUuid());
-        config.firstRunComplete(true);
-        config.accountStatus("CLEAN");
+        // Store character ID and status per-account
+        setAccountConfig("characterId", "local-" + config.clientUuid());
+        setAccountConfig("accountStatus", "CLEAN");
     }
 
     // ---------------------------------------------------
@@ -207,7 +243,8 @@ public class TradeWindsAuthService
                 StatusResponse out = gson.fromJson(resp, StatusResponse.class);
                 if (out != null && out.status != null)
                 {
-                    config.accountStatus(out.status);
+                    // Store account status per-account
+                    setAccountConfig("accountStatus", out.status);
                 }
             }
         }
@@ -242,7 +279,7 @@ public class TradeWindsAuthService
             PresenceHeartbeat reqObj = new PresenceHeartbeat();
             reqObj.username = normalized;
             reqObj.world = client.getWorld();
-            reqObj.status = config.accountStatus();
+            reqObj.status = getAccountStatus().toConfigValue(); // Get status dynamically
 
             String json = gson.toJson(reqObj);
 
@@ -355,6 +392,7 @@ public class TradeWindsAuthService
     // ---------------------------------------------------
     private void ensureClientUuid()
     {
+        // clientUuid remains a client-wide setting
         if (config.clientUuid() == null || config.clientUuid().isEmpty())
         {
             config.clientUuid(UUID.randomUUID().toString());
@@ -474,8 +512,9 @@ public class TradeWindsAuthService
 
     public void brickAccount(String reason)
     {
-        config.accountStatus("BRICKED");
-        config.brickReason(reason);
+        // Store account status and reason per-account
+        setAccountConfig("accountStatus", "BRICKED");
+        setAccountConfig("brickReason", reason);
 
         // Optionally send to backend if required
         submitBrick(reason);
