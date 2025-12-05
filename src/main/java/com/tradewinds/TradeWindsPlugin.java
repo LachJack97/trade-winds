@@ -96,7 +96,7 @@ public class TradeWindsPlugin extends Plugin {
 
         // --- PANEL + SIDEBAR NAV ---
         panel = new TradeWindsPanel(this, config, authService);
-
+//
         BufferedImage icon = ImageUtil.loadImageResource(getClass(), "tradewinds.png");
         navButton = NavigationButton.builder()
                 .tooltip("Trade Winds")
