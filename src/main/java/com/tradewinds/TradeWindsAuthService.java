@@ -384,7 +384,25 @@ public class TradeWindsAuthService
     public TradeWindsAccountStatus getStatusOf(String normalizedUsername)
     {
         PresenceEntry entry = presenceCache.get(normalizedUsername);
-        return entry != null ? entry.status : null;
+        if (entry != null)
+        {
+            return entry.status;
+        }
+
+        if (isAuthenticated())
+        {
+            Player local = client.getLocalPlayer();
+            if (local != null)
+            {
+                String self = normalizeUsername(local.getName());
+                if (self.equals(normalizedUsername))
+                {
+                    return getAccountStatus();
+                }
+            }
+        }
+
+        return null;
     }
 
     // ---------------------------------------------------

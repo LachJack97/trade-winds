@@ -31,6 +31,12 @@ public class TradeWindsStatusOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D g)
     {
+
+        if (!authService.isAuthenticated())
+        {
+            return null;
+        }
+
         if (client.getGameState() != GameState.LOGGED_IN)
         {
             return null;
