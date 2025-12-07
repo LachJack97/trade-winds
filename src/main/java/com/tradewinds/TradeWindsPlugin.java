@@ -40,14 +40,12 @@ public class TradeWindsPlugin extends Plugin {
     private Client client;
     @Inject
     private ClientThread clientThread;
-
     @Inject
     private OverlayManager overlayManager;
     @Inject
     private EventBus eventBus;
-
-    // Old plugin components (bank system)
     @Inject
+
     private TradeWindsBankOverlay bankOverlay;
     @Inject
     private TradeWindsItemInfoOverlay itemInfoOverlay;
@@ -57,12 +55,12 @@ public class TradeWindsPlugin extends Plugin {
     private BankTracker bankTracker;
     @Inject
     private TradeWindsMenuService menuService;
-
-    // New plugin components (auth, presence, status)
     @Inject
     private ClientToolbar clientToolbar;
     @Inject
     private TradeWindsConfig config;
+    @Inject
+    private TradeWindsStatusLookupService statusLookupService;
     @Inject
     private TradeWindsAuthService authService;
     @Inject
@@ -83,6 +81,7 @@ public class TradeWindsPlugin extends Plugin {
         // --- STORAGE INIT (OLD WORKING SYSTEM) ---
         storage = new TradeWindsStorage(RuneLite.RUNELITE_DIR, client);
         bankLedgerService.setStorage(storage);
+
 
         // --- ADD OVERLAYS ---
         overlayManager.add(bankOverlay);
@@ -105,6 +104,7 @@ public class TradeWindsPlugin extends Plugin {
                 .priority(5)
                 .build();
 
+
         clientToolbar.addNavigation(navButton);
 
         balancesLoaded = false;
@@ -117,6 +117,7 @@ public class TradeWindsPlugin extends Plugin {
         overlayManager.remove(bankOverlay);
         overlayManager.remove(itemInfoOverlay);
         overlayManager.remove(statusOverlay);
+
 
         eventBus.unregister(itemInfoOverlay);
         eventBus.unregister(menuService);
@@ -136,15 +137,27 @@ public class TradeWindsPlugin extends Plugin {
         panel = null;
     }
 
-    // -----------------------
-    // GAME TICK (ALL SYSTEMS)
-    // -----------------------
     @Subscribe
-    public void onGameTick(GameTick tick) {
-        // --- LOAD BALANCES ONCE PER LOGIN (OLD WORKING LOGIC) ---
+    public void onGameTick(GameTick tick)
+    {
+        // --- REALTIME PRESENCE BROADCAST ---
+        if (client.getLocalPlayer() != null && authService.isAuthenticated())
+        {
+            String username = TradeWindsAuthService.normalizeUsername(
+                    client.getLocalPlayer().getName()
+            );
+
+        }
+
+        // --- TEMP DEBUG ---
+        log.info("TW onGameTick: balancesLoaded={} isAuthenticated={}",
+                balancesLoaded, authService.isAuthenticated());
+
+        // --- LOAD BANK BALANCES ON FIRST TICK LOGGED IN ---
         if (!balancesLoaded
                 && client.getGameState() == GameState.LOGGED_IN
-                && client.getLocalPlayer() != null) {
+                && client.getLocalPlayer() != null)
+        {
             balancesLoaded = true;
 
             log.info("Player detected: loading TradeWinds balances...");
@@ -153,22 +166,30 @@ public class TradeWindsPlugin extends Plugin {
             {
                 try {
                     bankLedgerService.loadBalances();
-                } catch (Exception e) {
+                    authService.debugPrintAuthState();
+                }
+                catch (Exception e) {
                     log.warn("TradeWinds: loadBalances() failed", e);
                 }
             });
         }
 
-        // --- AUTH / PRESENCE / STATUS (NEW SYSTEM) ---
-        authService.pollStatusIfDue();
-        authService.sendPresenceHeartbeatIfDue();
-        authService.refreshNearbyPlayersIfDue();
 
-        // --- UPDATE PANEL ---
-        if (panel != null) {
+
+        // --- AUTH STATUS POLLING (LOW FREQUENCY) ---
+        authService.pollStatusIfDue();
+
+        // --- PANEL REFRESH ---
+        if (panel != null)
+        {
             panel.refreshState();
         }
+
+        statusLookupService.pumpQueueIfDue();
+
     }
+
+
 
     // -----------------------
     // BANK + MENU EVENTS
